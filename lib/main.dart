@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:poc_appsflyer_flutter/second_page.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'dart:convert';
+import 'package:mixpanel_flutter/mixpanel_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // เพิ่มค่าคงที่สำหรับ AppsFlyer configuration
 const String afDevKey = "YdMKUxiBcBt5Jr2xXCxwEj";
@@ -31,16 +33,20 @@ void main() async {
       registerOnAppOpenAttributionCallback: true,
       registerOnDeepLinkingCallback: false);
 
-  // Starting the SDK with optional success and error callbacks
-  appsflyerSdk.startSDK(
-    onSuccess: () {
-      print("AppsFlyer SDK initialized successfully.");
-    },
-    onError: (int errorCode, String errorMessage) {
-      print(
-          "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
-    },
-  );
+  if (await Permission.appTrackingTransparency.request().isGranted) {
+    // Either the permission was already granted before or the user just granted it.
+
+    // Starting the SDK with optional success and error callbacks
+    appsflyerSdk.startSDK(
+      onSuccess: () {
+        print("AppsFlyer SDK initialized successfully.");
+      },
+      onError: (int errorCode, String errorMessage) {
+        print(
+            "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+      },
+    );
+  }
 
   // Deferred Deep Linking (Get Conversion Data)
   appsflyerSdk.onInstallConversionData((res) {
@@ -86,9 +92,23 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class FirstPage extends StatelessWidget {
+class FirstPage extends StatefulWidget {
   final AppsflyerSdk appsflyerSdk;
+
   const FirstPage({super.key, required this.appsflyerSdk});
+
+  @override
+  State<FirstPage> createState() => _FirstPageState();
+}
+
+class _FirstPageState extends State<FirstPage> {
+  late Mixpanel mixpanel;
+
+  @override
+  void initState() {
+    super.initState();
+    initMixpanel();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +119,8 @@ class FirstPage extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            logEvent("event_page_two", null);
+            logEvent("event_page_two_appflyer", null);
+            mixpanel.track("event_page_two_mixpanel");
 
             Navigator.push(
               context,
@@ -112,10 +133,19 @@ class FirstPage extends StatelessWidget {
     );
   }
 
+  Future<void> initMixpanel() async {
+    mixpanel = await Mixpanel.init("05b909a740750269337ea8a5274b5f78",
+        trackAutomaticEvents: false);
+    mixpanel.setLoggingEnabled(true);
+    final distinctId = await mixpanel.getDistinctId();
+    print("MixPanel distinctId: $distinctId");
+    widget.appsflyerSdk.setCustomerUserId(distinctId);
+  }
+
   Future<bool?> logEvent(String eventName, Map? eventValues) async {
     bool? result;
     try {
-      result = await appsflyerSdk.logEvent(eventName, eventValues);
+      result = await widget.appsflyerSdk.logEvent(eventName, eventValues);
     } on Exception catch (_) {}
     print("Result logEvent: $result");
     return result;

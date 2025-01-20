@@ -38,6 +38,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>เพื่อช่วยให้เรามอบประสบการณ์การใช้งานที่ดีที่สุด และนำเสนอกิจกรรมโปรโมชั่นพิเศษเฉพาะคุณ</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
