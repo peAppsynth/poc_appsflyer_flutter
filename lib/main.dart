@@ -12,6 +12,12 @@ const String oneLinkID = "gQ1s";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Mixpanel first
+  final mixpanel = await Mixpanel.init("05b909a740750269337ea8a5274b5f78", trackAutomaticEvents: false);
+  mixpanel.setLoggingEnabled(true);
+  final distinctId = await mixpanel.getDistinctId();
+  
   // สร้าง AppsFlyer configuration
   AppsFlyerOptions appsFlyerOptions = AppsFlyerOptions(
     afDevKey: afDevKey,
@@ -26,24 +32,24 @@ void main() async {
 
   // สร้าง AppsFlyer SDK instance
   AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
+  
+  // Set CustomerId before initializing AppsFlyer
+  appsflyerSdk.setCustomerUserId(distinctId);
 
-  // Initialization of the AppsFlyer SDK
+  // Then initialize AppsFlyer SDK
   appsflyerSdk.initSdk(
-      registerConversionDataCallback: true,
-      registerOnAppOpenAttributionCallback: true,
-      registerOnDeepLinkingCallback: false);
+    registerConversionDataCallback: true,
+    registerOnAppOpenAttributionCallback: true,
+    registerOnDeepLinkingCallback: false
+  );
 
   if (await Permission.appTrackingTransparency.request().isGranted) {
-    // Either the permission was already granted before or the user just granted it.
-
-    // Starting the SDK with optional success and error callbacks
     appsflyerSdk.startSDK(
       onSuccess: () {
         print("AppsFlyer SDK initialized successfully.");
       },
       onError: (int errorCode, String errorMessage) {
-        print(
-            "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+        print("Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
       },
     );
   }
@@ -77,37 +83,37 @@ void main() async {
     }
   });
 
-  runApp(MyApp(appsflyerSdk: appsflyerSdk));
+  runApp(MyApp(appsflyerSdk: appsflyerSdk, mixpanel: mixpanel));
 }
 
 class MyApp extends StatelessWidget {
   final AppsflyerSdk appsflyerSdk;
-  const MyApp({super.key, required this.appsflyerSdk});
+  final Mixpanel mixpanel;
+  
+  const MyApp({super.key, required this.appsflyerSdk, required this.mixpanel});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: FirstPage(appsflyerSdk: appsflyerSdk),
+      home: FirstPage(appsflyerSdk: appsflyerSdk, mixpanel: mixpanel),
     );
   }
 }
 
 class FirstPage extends StatefulWidget {
   final AppsflyerSdk appsflyerSdk;
+  final Mixpanel mixpanel;
 
-  const FirstPage({super.key, required this.appsflyerSdk});
+  const FirstPage({super.key, required this.appsflyerSdk, required this.mixpanel});
 
   @override
   State<FirstPage> createState() => _FirstPageState();
 }
 
 class _FirstPageState extends State<FirstPage> {
-  late Mixpanel mixpanel;
-
   @override
   void initState() {
     super.initState();
-    initMixpanel();
   }
 
   @override
@@ -120,7 +126,7 @@ class _FirstPageState extends State<FirstPage> {
         child: ElevatedButton(
           onPressed: () {
             logEvent("event_page_two_appflyer", null);
-            mixpanel.track("event_page_two_mixpanel");
+            widget.mixpanel.track("event_page_two_mixpanel");
 
             Navigator.push(
               context,
@@ -131,15 +137,6 @@ class _FirstPageState extends State<FirstPage> {
         ),
       ),
     );
-  }
-
-  Future<void> initMixpanel() async {
-    mixpanel = await Mixpanel.init("05b909a740750269337ea8a5274b5f78",
-        trackAutomaticEvents: false);
-    mixpanel.setLoggingEnabled(true);
-    final distinctId = await mixpanel.getDistinctId();
-    print("MixPanel distinctId: $distinctId");
-    widget.appsflyerSdk.setCustomerUserId(distinctId);
   }
 
   Future<bool?> logEvent(String eventName, Map? eventValues) async {
